@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@theme {
+  --color-navy-900: #0a0a2a;
+}
+
+@layer base {
+  body {
+    @apply bg-gray-900 text-gray-100 antialiased selection:bg-cyan-500/30 selection:text-cyan-200;
+  }
+}
+
+@layer components {
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-gray-900;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-gray-700 rounded-full hover:bg-gray-600 transition-colors;
+  }
+}
