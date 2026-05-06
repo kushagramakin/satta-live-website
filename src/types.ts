@@ -29,4 +29,4 @@ export interface MonthlyMetric {
   average_log_loss: number;
 }
 
-export type AppView = 'dashboard' | 'backtest' | 'signals';
+export type AppView = 'dashboard' | 'backtest' | 'signals' | 'docs';
