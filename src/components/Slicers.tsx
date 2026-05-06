@@ -10,9 +10,11 @@ interface SlicersProps {
   month: number | undefined;
   setYear: (y: number) => void;
   setMonth: (m: number | undefined) => void;
+  onExport: () => void;
+  onDocs: () => void;
 }
 
-export default function Slicers({ year, month, setYear, setMonth }: SlicersProps) {
+export default function Slicers({ year, month, setYear, setMonth, onExport, onDocs }: SlicersProps) {
   const years = [2022, 2023, 2024, 2025, 2026];
   const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -59,10 +61,16 @@ export default function Slicers({ year, month, setYear, setMonth }: SlicersProps
 
       <div className="ml-auto hidden md:block">
         <div className="flex gap-2">
-            <button className="px-4 py-2 rounded-lg bg-navy-900 border border-cyan-500/30 text-cyan-400 text-xs font-bold hover:bg-cyan-500 hover:text-white transition-all">
+            <button 
+              onClick={onExport}
+              className="px-4 py-2 rounded-lg bg-navy-900 border border-cyan-500/30 text-cyan-400 text-xs font-bold hover:bg-cyan-500 hover:text-white transition-all cursor-pointer"
+            >
                 Export Data
             </button>
-            <button className="px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-gray-400 text-xs font-bold hover:bg-gray-700 transition-all">
+            <button 
+              onClick={onDocs}
+              className="px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-gray-400 text-xs font-bold hover:bg-gray-700 transition-all cursor-pointer"
+            >
                 API Docs
             </button>
         </div>
