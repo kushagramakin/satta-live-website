@@ -272,6 +272,29 @@ export default function App() {
           </motion.div>
         );
       case 'signals':
+        // Extract the live signals from the database, or provide a waiting fallback if they haven't arrived yet
+        const liveSignals = prediction && (prediction as any).signals 
+          ? (prediction as any).signals 
+          : [
+              { time: '--:--:--', signal: 'AWAITING_MODEL_SYNC', confidence: '0%', status: 'NOISE' }
+            ];
+
+        // Determine overall signal health based on the primary confidence score
+        const overallConfidence = prediction && (prediction as any).top_probability_percent 
+            ? (prediction as any).top_probability_percent 
+            : 0;
+            
+        let signalStrength = "WEAK";
+        let signalColor = "text-red-500";
+        
+        if (overallConfidence > 70) {
+            signalStrength = "STRONG";
+            signalColor = "text-cyan-400";
+        } else if (overallConfidence > 40) {
+            signalStrength = "MODERATE";
+            signalColor = "text-yellow-400";
+        }
+
         return (
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -281,15 +304,15 @@ export default function App() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
               <div>
                 <h2 className="text-2xl font-bold text-white italic flex items-center gap-2">
-                  <Binary className="w-6 h-6 text-red-400" />
+                  <Binary className={`w-6 h-6 ${signalColor}`} />
                   Live Signal Streams
                 </h2>
-                <p className="text-xs font-mono text-gray-500 mt-1 uppercase tracking-widest">Desawar Pattern Recognition Engine</p>
+                <p className="text-xs font-mono text-gray-500 mt-1 uppercase tracking-widest">Random Forest Regressor Telemetry</p>
               </div>
               <div className="flex gap-4">
                  <div className="px-4 py-2 rounded-lg bg-gray-900 border border-gray-700">
                     <span className="block text-[10px] text-gray-500 uppercase mb-1 font-bold">Signal Strength</span>
-                    <span className="text-lg font-bold text-red-500 animate-pulse">WEAK</span>
+                    <span className={`text-lg font-bold ${signalColor} animate-pulse`}>{signalStrength}</span>
                  </div>
                  <div className="px-4 py-2 rounded-lg bg-gray-900 border border-gray-700">
                     <span className="block text-[10px] text-gray-500 uppercase mb-1 font-bold">Latency</span>
@@ -299,13 +322,7 @@ export default function App() {
             </div>
 
             <div className="space-y-3">
-              {[
-                { time: '08:42:15', signal: 'PATTERN_RECOG_01', confidence: '84%', status: 'STABLE' },
-                { time: '08:41:02', signal: 'MARKOV_CHAIN_NODE', confidence: '92%', status: 'HIGH_CONF' },
-                { time: '08:39:55', signal: 'WEIGHT_BIAS_ADJ', confidence: '71%', status: 'SENSITIVE' },
-                { time: '08:35:12', signal: 'DEEP_LEARN_QUERY', confidence: '65%', status: 'NOISE' },
-                { time: '08:32:04', signal: 'SEQUENCE_SYNC', confidence: '89%', status: 'STABLE' },
-              ].map((sig, i) => (
+              {liveSignals.map((sig: any, i: number) => (
                 <motion.div 
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -320,13 +337,14 @@ export default function App() {
                   <div className="flex items-center gap-8">
                     <div className="hidden md:block w-32 h-1.5 bg-gray-800 rounded-full overflow-hidden">
                       <div 
-                        className="h-full bg-cyan-500/50" 
-                        style={{ width: sig.confidence }}
+                        className={`h-full ${sig.status === 'SENSITIVE' || sig.status === 'NOISE' ? 'bg-red-500/50' : 'bg-cyan-500/50'}`} 
+                        style={{ width: typeof sig.confidence === 'string' ? sig.confidence.replace('% INF', '%').replace('% WGT', '%') : '0%' }}
                       />
                     </div>
                     <span className="text-xs font-mono text-cyan-400">{sig.confidence}</span>
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
                       sig.status === 'HIGH_CONF' ? 'border-cyan-500/50 text-cyan-400 bg-cyan-500/10' : 
+                      sig.status === 'SENSITIVE' ? 'border-yellow-500/50 text-yellow-500 bg-yellow-500/10' : 
                       sig.status === 'NOISE' ? 'border-red-500/50 text-red-500 bg-red-500/10' : 
                       'border-gray-700 text-gray-500 bg-gray-800'
                     }`}>
@@ -339,7 +357,7 @@ export default function App() {
 
             <div className="mt-8 p-4 rounded-xl bg-gray-800/30 border border-dashed border-gray-700 text-center">
               <p className="text-xs font-mono text-gray-500 italic">
-                * Scanning frequencies... Waiting for high-probability intercept.
+                * Real-time telemetry extracted directly from Python Random Forest estimators.
               </p>
             </div>
           </motion.div>
