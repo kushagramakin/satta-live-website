@@ -11,7 +11,8 @@ import HistoricalTable from './components/HistoricalTable';
 import AccuracyChart from './components/AccuracyChart';
 import { 
   getHistoricalDraws, 
-  getDailyPredictions
+  getDailyPredictions, 
+  getMonthlyMetrics 
 } from './services/firebase';
 import { 
   HistoricalDraw, 
@@ -37,52 +38,16 @@ export default function App() {
     async function init() {
       setLoading(true);
       try {
-        // 1. Fetch historical draws and daily predictions ONLY (Removed fake monthly metrics call)
-        const [hist, pred] = await Promise.all([
+        // Restored: Fetching the dedicated chart metrics directly from Firebase
+        const [hist, pred, met] = await Promise.all([
           getHistoricalDraws(year, month),
-          getDailyPredictions()
+          getDailyPredictions(),
+          getMonthlyMetrics()
         ]);
         
         setHistoricalData(hist);
         setPrediction(pred[0] || null);
-
-        // 2. DYNAMIC METRIC CALCULATION: Group the real history by Month
-        const monthlyStats: Record<string, { total: number, hits: number, totalError: number }> = {};
-
-        hist.forEach(draw => {
-          if (draw.predicted_number == null) return; // Skip days before the AI was active
-
-          const dateObj = draw.date instanceof Date ? draw.date : (draw.date as any).toDate();
-          // Format as YYYY-MM
-          const monthYear = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
-
-          if (!monthlyStats[monthYear]) {
-            monthlyStats[monthYear] = { total: 0, hits: 0, totalError: 0 };
-          }
-
-          monthlyStats[monthYear].total += 1;
-          if (draw.is_hit) monthlyStats[monthYear].hits += 1;
-          
-          // Track the absolute error for our Log Loss proxy
-          monthlyStats[monthYear].totalError += Math.abs(draw.predicted_number - draw.winning_number);
-        });
-
-        // 3. Convert the grouped data into the MonthlyMetric array the chart expects
-        const dynamicMetrics: MonthlyMetric[] = Object.entries(monthlyStats)
-          .map(([month_year, stats]) => {
-             const accuracy_rate = stats.total > 0 ? stats.hits / stats.total : 0;
-             
-             // Proxy the historical penalty curve using the normalized Mean Absolute Error.
-             const avgError = stats.total > 0 ? stats.totalError / stats.total : 50;
-             const average_log_loss = Math.min(0.99, avgError / 100); 
-
-             return { id: month_year, month_year, accuracy_rate, average_log_loss } as MonthlyMetric;
-          })
-          // Sort chronologically so the line chart flows left to right
-          .sort((a, b) => a.month_year.localeCompare(b.month_year));
-
-        setMetrics(dynamicMetrics);
-
+        setMetrics(met);
       } catch (error) {
         console.error("Failed to fetch data:", error);
       } finally {
@@ -119,10 +84,8 @@ export default function App() {
     setTimeout(() => {
       setIsBacktesting(false);
       
-      // 1. Filter the real historical data to only include dates with a prediction
       const validDraws = historicalData.filter(d => d.predicted_number !== undefined && d.predicted_number !== null);
       
-      // 2. Map it to the Backtest Table format
       const formattedResults = validDraws.map(draw => {
         const dateObj = draw.date instanceof Date ? draw.date : (draw.date as any).toDate();
         const dateStr = dateObj.toISOString().split('T')[0];
@@ -135,11 +98,10 @@ export default function App() {
         };
       });
 
-      // 3. Sort by Date (Most Recent First)
       formattedResults.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       
       setBacktestResults(formattedResults);
-    }, 1500); // 1.5 second delay for "calculating" aesthetic
+    }, 1500); 
   };
 
   const renderContent = () => {
@@ -199,20 +161,16 @@ export default function App() {
           </div>
         );
       case 'backtest':
-        
-        // Dynamically calculate stats based on real results
         const totalSignals = backtestResults ? backtestResults.length : 0;
         const totalWins = backtestResults ? backtestResults.filter(r => r.result === 'WIN').length : 0;
         const winRate = totalSignals > 0 ? ((totalWins / totalSignals) * 100).toFixed(1) : '0.0';
 
-        // Calculate Mean Absolute Error (MAE)
         let mae = "0.00";
         if (totalSignals > 0 && backtestResults) {
           const totalError = backtestResults.reduce((sum, r) => sum + Math.abs(r.predicted - r.actual), 0);
           mae = (totalError / totalSignals).toFixed(2);
         }
 
-        // Pull current model Log Loss (defaults to 0.4521 if not strictly found)
         const currentLogLoss = prediction && (prediction as any).log_loss_penalty 
           ? (prediction as any).log_loss_penalty.toFixed(4) 
           : "0.4521";
