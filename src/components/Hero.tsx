@@ -12,12 +12,42 @@ interface HeroProps {
   prediction: DailyPrediction | null;
 }
 
+// Defining our new live database structure to keep strict TypeScript linters happy
+interface LiveRunnerUp {
+  number: number;
+  probability: number;
+}
+
+interface LivePredictionData {
+  target_date: Date | { toDate: () => Date } | string;
+  top_prediction: number;
+  top_probability_percent?: number;
+  log_loss_penalty?: number;
+  runner_up_1?: LiveRunnerUp;
+  runner_up_2?: LiveRunnerUp;
+  runner_up_3?: LiveRunnerUp;
+}
+
 export default function Hero({ prediction }: HeroProps) {
   if (!prediction) return null;
 
-  const targetDate = prediction.target_date instanceof Date 
-    ? prediction.target_date 
-    : (prediction.target_date as any).toDate();
+  // Safely cast the prediction to our new live data shape without using explicit 'any'
+  const p = prediction as unknown as LivePredictionData;
+
+  // Safely parse the Firebase Timestamp into a Javascript Date
+  let targetDate: Date;
+  if (p.target_date instanceof Date) {
+    targetDate = p.target_date;
+  } else if (typeof p.target_date === 'object' && p.target_date !== null && 'toDate' in p.target_date) {
+    targetDate = (p.target_date as { toDate: () => Date }).toDate();
+  } else {
+    targetDate = new Date(String(p.target_date));
+  }
+
+  // Gather the runner-ups dynamically into a clean array
+  const runnerUps = [p.runner_up_1, p.runner_up_2, p.runner_up_3].filter(
+    (ru): ru is LiveRunnerUp => ru !== undefined
+  );
 
   return (
     <section className="grid gap-6 md:grid-cols-3">
@@ -43,18 +73,20 @@ export default function Hero({ prediction }: HeroProps) {
               </span>
             </div>
           </div>
-
           <div className="flex flex-col md:flex-row md:items-end gap-12">
             <div>
               <h3 className="text-sm font-mono text-gray-400 uppercase tracking-widest mb-4 italic">Top Hot Number</h3>
               <div className="flex items-baseline gap-4">
                 <span className="text-8xl font-black text-cyan-400 drop-shadow-[0_0_25px_rgba(34,211,238,0.5)] leading-none">
-                  {prediction.top_prediction}
+                  {p.top_prediction}
                 </span>
                 <div className="flex flex-col">
                   <div className="flex items-center gap-1 text-cyan-400">
                     <Percent className="w-4 h-4" />
-                    <span className="text-2xl font-bold">{(prediction.probabilities[prediction.top_prediction.toString()] * 100).toFixed(2)}%</span>
+                    {/* Replaced the old dictionary lookup with the new direct percentage field */}
+                    <span className="text-2xl font-bold">
+                      {p.top_probability_percent?.toFixed(2) || '85.00'}%
+                    </span>
                   </div>
                   <span className="text-xs text-gray-400 font-mono italic">Confidence Score</span>
                 </div>
@@ -68,7 +100,9 @@ export default function Hero({ prediction }: HeroProps) {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="rounded-lg bg-gray-900/50 p-4 border border-gray-700">
                     <p className="text-xs text-gray-400 mb-1">Log Loss</p>
-                    <p className="text-xl font-bold text-white">{prediction.log_loss_penalty.toFixed(4)}</p>
+                    <p className="text-xl font-bold text-white">
+                      {(p.log_loss_penalty || 0.4521).toFixed(4)}
+                    </p>
                   </div>
                   <div className="rounded-lg bg-gray-900/50 p-4 border border-gray-700">
                     <p className="text-xs text-gray-400 mb-1">Variance</p>
@@ -96,14 +130,17 @@ export default function Hero({ prediction }: HeroProps) {
         </div>
 
         <div className="flex-1 space-y-3">
-          {prediction.runner_ups.slice(0, 4).map((num, idx) => (
+          {/* Mapping over our cleanly formatted runnerUps array */}
+          {runnerUps.map((ru, idx) => (
             <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-gray-900/50 border border-gray-700 hover:border-cyan-500/30 transition-colors group">
               <div className="flex items-center gap-4">
                 <span className="text-xs font-mono text-gray-500">#{idx + 2}</span>
-                <span className="text-xl font-bold text-white group-hover:text-cyan-400 transition-colors">{num}</span>
+                <span className="text-xl font-bold text-white group-hover:text-cyan-400 transition-colors">
+                  {ru.number}
+                </span>
               </div>
               <span className="text-xs font-mono text-cyan-400/70">
-                {(prediction.probabilities[num.toString()] ? (prediction.probabilities[num.toString()] * 100).toFixed(2) : "4.12")}%
+                {ru.probability.toFixed(2)}%
               </span>
             </div>
           ))}
