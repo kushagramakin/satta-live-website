@@ -11,8 +11,7 @@ import HistoricalTable from './components/HistoricalTable';
 import AccuracyChart from './components/AccuracyChart';
 import { 
   getHistoricalDraws, 
-  getDailyPredictions, 
-  getMonthlyMetrics 
+  getDailyPredictions
 } from './services/firebase';
 import { 
   HistoricalDraw, 
@@ -38,15 +37,52 @@ export default function App() {
     async function init() {
       setLoading(true);
       try {
-        const [hist, pred, met] = await Promise.all([
+        // 1. Fetch historical draws and daily predictions ONLY (Removed fake monthly metrics call)
+        const [hist, pred] = await Promise.all([
           getHistoricalDraws(year, month),
-          getDailyPredictions(),
-          getMonthlyMetrics()
+          getDailyPredictions()
         ]);
         
         setHistoricalData(hist);
         setPrediction(pred[0] || null);
-        setMetrics(met);
+
+        // 2. DYNAMIC METRIC CALCULATION: Group the real history by Month
+        const monthlyStats: Record<string, { total: number, hits: number, totalError: number }> = {};
+
+        hist.forEach(draw => {
+          if (draw.predicted_number == null) return; // Skip days before the AI was active
+
+          const dateObj = draw.date instanceof Date ? draw.date : (draw.date as any).toDate();
+          // Format as YYYY-MM
+          const monthYear = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
+
+          if (!monthlyStats[monthYear]) {
+            monthlyStats[monthYear] = { total: 0, hits: 0, totalError: 0 };
+          }
+
+          monthlyStats[monthYear].total += 1;
+          if (draw.is_hit) monthlyStats[monthYear].hits += 1;
+          
+          // Track the absolute error for our Log Loss proxy
+          monthlyStats[monthYear].totalError += Math.abs(draw.predicted_number - draw.winning_number);
+        });
+
+        // 3. Convert the grouped data into the MonthlyMetric array the chart expects
+        const dynamicMetrics: MonthlyMetric[] = Object.entries(monthlyStats)
+          .map(([month_year, stats]) => {
+             const accuracy_rate = stats.total > 0 ? stats.hits / stats.total : 0;
+             
+             // Proxy the historical penalty curve using the normalized Mean Absolute Error.
+             const avgError = stats.total > 0 ? stats.totalError / stats.total : 50;
+             const average_log_loss = Math.min(0.99, avgError / 100); 
+
+             return { id: month_year, month_year, accuracy_rate, average_log_loss } as MonthlyMetric;
+          })
+          // Sort chronologically so the line chart flows left to right
+          .sort((a, b) => a.month_year.localeCompare(b.month_year));
+
+        setMetrics(dynamicMetrics);
+
       } catch (error) {
         console.error("Failed to fetch data:", error);
       } finally {
