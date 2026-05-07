@@ -67,7 +67,7 @@ export default function App() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `satta_desawar_export_${year}_${month ?? 'all'}.csv`);
+    link.setAttribute("download", `satta_desawar_export_${year}_${month !== undefined ? month + 1 : 'all'}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -79,16 +79,31 @@ export default function App() {
   const runBacktest = () => {
     setIsBacktesting(true);
     setBacktestResults(null);
+    
     setTimeout(() => {
       setIsBacktesting(false);
-      setBacktestResults([
-        { date: '2026-05-01', predicted: 42, actual: 42, result: 'WIN' },
-        { date: '2026-04-30', predicted: 17, actual: 19, result: 'LOSS' },
-        { date: '2026-04-29', predicted: 88, actual: 88, result: 'WIN' },
-        { date: '2026-04-28', predicted: 12, actual: 15, result: 'LOSS' },
-        { date: '2026-04-27', predicted: 23, actual: 23, result: 'WIN' },
-      ]);
-    }, 2000);
+      
+      // 1. Filter the real historical data to only include dates with a prediction
+      const validDraws = historicalData.filter(d => d.predicted_number !== undefined && d.predicted_number !== null);
+      
+      // 2. Map it to the Backtest Table format
+      const formattedResults = validDraws.map(draw => {
+        const dateObj = draw.date instanceof Date ? draw.date : (draw.date as any).toDate();
+        const dateStr = dateObj.toISOString().split('T')[0];
+        
+        return {
+          date: dateStr,
+          predicted: draw.predicted_number as number,
+          actual: draw.winning_number,
+          result: draw.is_hit ? 'WIN' : 'LOSS'
+        };
+      });
+
+      // 3. Sort by Date (Most Recent First)
+      formattedResults.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
+      setBacktestResults(formattedResults);
+    }, 1500); // 1.5 second delay for "calculating" aesthetic
   };
 
   const renderContent = () => {
@@ -136,8 +151,8 @@ export default function App() {
               <aside className="space-y-8">
                 {metrics && metrics.length > 0 ? (
                  <div className="w-full h-full">
-  <AccuracyChart data={metrics} />
-</div>
+                    <AccuracyChart data={metrics} />
+                 </div>
                 ) : (
                   <div className="h-[400px] flex items-center justify-center rounded-2xl border border-gray-800 bg-gray-800/20">
                     <p className="text-gray-500 font-mono text-sm">Processing chart data...</p>
@@ -148,6 +163,12 @@ export default function App() {
           </div>
         );
       case 'backtest':
+        
+        // Dynamically calculate stats based on real results
+        const totalSignals = backtestResults ? backtestResults.length : 0;
+        const totalWins = backtestResults ? backtestResults.filter(r => r.result === 'WIN').length : 0;
+        const winRate = totalSignals > 0 ? ((totalWins / totalSignals) * 100).toFixed(1) : '0.0';
+
         return (
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -158,7 +179,7 @@ export default function App() {
               <BarChart3 className="w-16 h-16 text-cyan-400 mx-auto mb-6 opacity-80" />
               <h2 className="text-3xl font-bold text-white mb-4 italic">Satta King Backtest Engine</h2>
               <p className="text-gray-400 max-w-xl mx-auto mb-8 font-mono text-sm">
-                Desawar Historical Performance Analytics. Our engine calculates probability density across 1800+ data points to verify strategy ROI.
+                Desawar Historical Performance Analytics. Our engine calculates probability density across data points to verify strategy ROI.
               </p>
               
               {!isBacktesting && !backtestResults && (
@@ -173,7 +194,7 @@ export default function App() {
               {isBacktesting && (
                 <div className="inline-flex items-center gap-3 rounded-full bg-cyan-400/10 px-6 py-3 text-cyan-400 ring-1 ring-inset ring-cyan-400/20">
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  <span className="text-sm font-bold uppercase tracking-widest">Processing Node 0x7F...</span>
+                  <span className="text-sm font-bold uppercase tracking-widest">Processing Machine Learning Nodes...</span>
                 </div>
               )}
             </div>
@@ -188,11 +209,11 @@ export default function App() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                     <div className="bg-gray-900 p-4 rounded-xl border border-gray-700">
                       <p className="text-[10px] text-gray-500 uppercase mb-1">Total Signals</p>
-                      <p className="text-2xl font-bold text-white">1,842</p>
+                      <p className="text-2xl font-bold text-white">{totalSignals}</p>
                     </div>
                     <div className="bg-gray-900 p-4 rounded-xl border border-gray-700">
                       <p className="text-[10px] text-gray-500 uppercase mb-1">Win Rate</p>
-                      <p className="text-2xl font-bold text-cyan-400">76.4%</p>
+                      <p className="text-2xl font-bold text-cyan-400">{winRate}%</p>
                     </div>
                     <div className="bg-gray-900 p-4 rounded-xl border border-gray-700">
                       <p className="text-[10px] text-gray-500 uppercase mb-1">Max Drawdown</p>
