@@ -134,7 +134,15 @@ export default function App() {
               </div>
               
               <aside className="space-y-8">
-                <AccuracyChart data={metrics} />
+                {metrics && metrics.length > 0 ? (
+                  <div style={{ width: '100%', height: '400px', minHeight: '400px' }}>
+                    <AccuracyChart data={metrics} />
+                  </div>
+                ) : (
+                  <div className="h-[400px] flex items-center justify-center rounded-2xl border border-gray-800 bg-gray-800/20">
+                    <p className="text-gray-500 font-mono text-sm">Processing chart data...</p>
+                  </div>
+                )}
               </aside>
             </div>
           </div>
