@@ -18,6 +18,7 @@ interface LiveRunnerUp {
   probability: number;
 }
 
+// 1. Add it to the interface (near the top)
 interface LivePredictionData {
   target_date: Date | { toDate: () => Date } | string;
   top_prediction: number;
@@ -26,7 +27,13 @@ interface LivePredictionData {
   runner_up_1?: LiveRunnerUp;
   runner_up_2?: LiveRunnerUp;
   runner_up_3?: LiveRunnerUp;
+  runner_up_4?: LiveRunnerUp; // <-- Add this
 }
+
+// 2. Add it to the filter array
+  const runnerUps = [p.runner_up_1, p.runner_up_2, p.runner_up_3, p.runner_up_4].filter(
+    (ru): ru is LiveRunnerUp => ru !== undefined
+  );
 
 export default function Hero({ prediction }: HeroProps) {
   if (!prediction) return null;
