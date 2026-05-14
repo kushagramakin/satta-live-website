@@ -49,11 +49,16 @@ export default function HistoricalTable({ data }: HistoricalTableProps) {
                     </td>
                     <td className="px-6 py-4">
                       <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gray-800 border border-gray-700 text-white font-bold group-hover:border-cyan-500/50 group-hover:text-cyan-400 transition-all">
-                        {draw.winning_number}
+                        {draw.winning_number !== undefined && draw.winning_number !== null 
+                          ? draw.winning_number.toString().padStart(2, '0') 
+                          : '--'}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm font-mono text-gray-400 italic">
-                      {draw.predicted_number || '--'}
+                      {/* THE FIX: Strict null check plus 2-digit padding */}
+                      {draw.predicted_number !== undefined && draw.predicted_number !== null 
+                        ? draw.predicted_number.toString().padStart(2, '0') 
+                        : '--'}
                     </td>
                     <td className="px-6 py-4">
                       {draw.is_hit ? (
