@@ -11,6 +11,7 @@ export interface HistoricalDraw {
   winning_number: number;
   predicted_number?: number;
   is_hit?: boolean;
+  is_top_5_hit?: boolean;
 }
 
 export interface DailyPrediction {
