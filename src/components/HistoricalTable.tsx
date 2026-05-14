@@ -55,7 +55,6 @@ export default function HistoricalTable({ data }: HistoricalTableProps) {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm font-mono text-gray-400 italic">
-                      {/* THE FIX: Strict null check plus 2-digit padding */}
                       {draw.predicted_number !== undefined && draw.predicted_number !== null 
                         ? draw.predicted_number.toString().padStart(2, '0') 
                         : '--'}
@@ -65,6 +64,11 @@ export default function HistoricalTable({ data }: HistoricalTableProps) {
                         <div className="flex items-center gap-1.5 text-cyan-400">
                           <CheckCircle2 className="w-4 h-4 shadow-[0_0_10px_rgba(34,211,238,0.5)] rounded-full" />
                           <span className="text-[10px] font-bold uppercase tracking-tight">Direct Hit</span>
+                        </div>
+                      ) : draw.is_top_5_hit ? (
+                        <div className="flex items-center gap-1.5 text-amber-400">
+                          <CheckCircle2 className="w-4 h-4 shadow-[0_0_10px_rgba(251,191,36,0.5)] rounded-full" />
+                          <span className="text-[10px] font-bold uppercase tracking-tight">Matrix Hit</span>
                         </div>
                       ) : (
                         <div className="flex items-center gap-1.5 text-gray-600">
